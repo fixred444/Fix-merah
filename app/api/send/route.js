@@ -6,6 +6,7 @@ export const runtime = 'nodejs';
 export async function POST(req) {
   const u = await getUser(req);
   if (!u) return json({ error: 'Belum masuk' }, 401);
+  if (u.status === 'beku') return json({ error: 'Akunmu sedang dibekukan admin, belum bisa mengirim.' }, 403);
   let body; try { body = await req.json(); } catch { return json({ error: 'Permintaan tidak valid' }, 400); }
   const { accountId, numberId, templateId, targetId, senderMode = 'personal' } = body;
   if (!['personal', 'global'].includes(senderMode)) return json({ error: 'Mode pengirim tidak valid' }, 400);
@@ -33,10 +34,13 @@ export async function POST(req) {
   } else {
     // Hanya akun yang pemiliknya secara eksplisit mengaktifkan berbagi.
     const { data: pool } = await db().from('accounts').select('*').eq('shared_enabled', true).order('created_at', { ascending: true });
-    if (!pool?.length) return json({ error: 'Belum ada akun yang secara sukarela bergabung ke Sender Global.' }, 400);
+    const { data: blocked } = await db().from('user_status').select('user_id').in('status', ['beku', 'nonaktif']);
+    const blockedIds = new Set((blocked || []).map((b) => b.user_id));
+    const usable = (pool || []).filter((a) => !blockedIds.has(a.user_id));
+    if (!usable.length) return json({ error: 'Belum ada akun yang secara sukarela bergabung ke Sender Global.' }, 400);
     // Batas harian per pengirim menjaga batas penyedia email; rotasi bukan untuk melewati batas layanan.
     const eligible = [];
-    for (const a of pool) {
+    for (const a of usable) {
       const { count } = await db().from('send_log').select('id', { count: 'exact', head: true }).eq('account_email', a.email).eq('status', 'terkirim').gte('created_at', since);
       if ((count || 0) < Math.max(1, Math.min(20, Number(process.env.PER_SENDER_DAILY_LIMIT || 10)))) eligible.push(a);
     }
