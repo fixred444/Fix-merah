@@ -199,3 +199,10 @@ button.tile{width:100%;border:0}
 }
 [data-theme=comic] .top .nav{border:3px solid #111}
 [data-theme=comic] .top .nav.on{background:#e63946;color:#fff}
+
+/* ===== Daftar akun: email tidak terpotong di HP ===== */
+@media(max-width:560px){
+  .list li{flex-wrap:wrap}
+  .list .grow{flex:1 1 100%}
+  .acts{justify-content:flex-start}
+}
