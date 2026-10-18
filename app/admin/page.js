@@ -3,8 +3,77 @@ import { useCallback, useEffect, useState } from 'react';
 import { api } from '@/lib/client';
 import Shell from '@/components/Shell';
 
+function ago(iso) {
+  if (!iso) return 'belum pernah';
+  const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+  if (d < 1) return 'hari ini';
+  if (d < 30) return `${d} hari lalu`;
+  if (d < 365) return `${Math.floor(d / 30)} bulan lalu`;
+  return `${Math.floor(d / 365)} tahun lalu`;
+}
+
+function Users({ onMsg }) {
+  const [data, setData] = useState(null);
+  const [q, setQ] = useState('');
+  const [busyId, setBusyId] = useState('');
+
+  const load = useCallback(async () => { setData(await api('/api/admin/users')); }, []);
+  useEffect(() => { load().catch((e) => onMsg({ err: true, t: e.message })); }, [load, onMsg]);
+
+  const change = async (u, status) => {
+    const verb = { beku: 'membekukan', nonaktif: 'menonaktifkan', aktif: 'mengaktifkan kembali' }[status];
+    if (status !== 'aktif' && !window.confirm(`Yakin ${verb} ${u.email}?`)) return;
+    let note = '';
+    if (status !== 'aktif') { const n = window.prompt('Alasan (boleh dikosongkan)', ''); if (n === null) return; note = n; }
+    setBusyId(u.id); onMsg(null);
+    try {
+      await api('/api/admin/users', { method: 'PATCH', body: JSON.stringify({ id: u.id, status, note }) });
+      onMsg({ t: status === 'aktif' ? 'Pengguna diaktifkan kembali.' : status === 'beku' ? 'Pengguna dibekukan.' : 'Pengguna dinonaktifkan.' });
+      await load();
+    } catch (e) { onMsg({ err: true, t: e.message }); }
+    setBusyId('');
+  };
+
+  if (!data) return <section className="card fade"><p className="muted">Memuat pengguna…</p></section>;
+  const items = data.items.filter((u) => u.email.includes(q.trim().toLowerCase()));
+  const n = (s) => data.items.filter((u) => u.status === s).length;
+  const tagClass = { aktif: 'tag ok', beku: 'tag warn', nonaktif: 'tag err' };
+
+  return (
+    <section className="card fade">
+      <h2>Pengguna</h2>
+      <p className="muted">{data.items.length} terdaftar · {n('aktif')} aktif · {n('beku')} beku · {n('nonaktif')} nonaktif</p>
+      {!data.statusReady && <p className="note err">Tabel status belum ada. Jalankan SQL terbaru (bagian user_status) di Supabase supaya bekukan dan nonaktifkan bisa dipakai.</p>}
+      <p className="hint"><b>Beku</b>: masih bisa masuk dan melihat data, tapi tidak bisa mengirim, dan akun Gmail-nya keluar dari Sender Global. <b>Nonaktif</b>: tidak bisa memakai menu sama sekali.</p>
+      <input type="search" placeholder="Cari email pengguna" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Cari email pengguna" />
+      <ul className="list">
+        {items.map((u) => (
+          <li key={u.id}>
+            <span className="grow">
+              <b>{u.email}</b>
+              <small className="muted">Daftar {ago(u.createdAt)} · terakhir masuk {ago(u.lastSignIn)}</small>
+              <small className="muted">{u.accounts} akun Gmail ({u.shared} di Sender Global) · {u.sent} terkirim ({u.today} hari ini)</small>
+              <small className="muted">Tujuan terakhir: {u.lastTarget || 'belum ada'}</small>
+              {u.note && <small className="muted">Alasan: {u.note}</small>}
+            </span>
+            <span className="acts">
+              {u.isAdmin ? <span className="tag ok">Admin</span> : <>
+                <span className={tagClass[u.status]}>{u.status}</span>
+                {u.status !== 'aktif' && <button className="chip" disabled={busyId === u.id} onClick={() => change(u, 'aktif')}>Aktifkan kembali</button>}
+                {u.status === 'aktif' && <button className="chip" disabled={busyId === u.id} onClick={() => change(u, 'beku')}>Bekukan</button>}
+                {u.status !== 'nonaktif' && <button className="chip danger" disabled={busyId === u.id} onClick={() => change(u, 'nonaktif')}>Nonaktifkan</button>}
+              </>}
+            </span>
+          </li>
+        ))}
+        {items.length === 0 && <li className="empty">Tidak ada pengguna yang cocok.</li>}
+      </ul>
+    </section>
+  );
+}
+
 function Panel() {
-  const [tab, setTab] = useState('kuota');
+  const [tab, setTab] = useState('pengguna');
   const [tpls, setTpls] = useState([]);
   const [tgts, setTgts] = useState([]);
   const emptyT = { title: '', subject: '', body: '' };
@@ -38,10 +107,12 @@ function Panel() {
       {msg && <p className={msg.err ? 'note err' : 'note ok'} role="status">{msg.t}</p>}
 
       <div className="seg" role="tablist" aria-label="Bagian admin">
-        {[['kuota', 'Kuota'], ['teks', 'Teks'], ['tujuan', 'Tujuan']].map(([k, l]) => (
+        {[['pengguna', 'Pengguna'], ['kuota', 'Kuota'], ['teks', 'Teks'], ['tujuan', 'Tujuan']].map(([k, l]) => (
           <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => { setTab(k); setMsg(null); }}>{l}</button>
         ))}
       </div>
+
+      {tab === 'pengguna' && <Users onMsg={setMsg} />}
 
       {tab === 'kuota' && <section className="card fade">
         <h2>Kuota pengiriman</h2>
