@@ -50,12 +50,12 @@ export async function POST(req) {
   }
 
   const fill = (s) => String(s || '').replaceAll('{nomor}', num.phone);
-  const log = (status, error) => db().from('send_log').insert({ user_id: u.id, account_email: sender.email, phone: num.phone, target_email: tgt.email, template_title: tpl.title, status, error: error || null });
+  const log = (status, error) => db().from('send_log').insert({ user_id: u.id, account_email: sender.email, phone: num.phone, target_email: tgt.email, template_title: tpl.title, status, error: error || null }).select('id').single();
   try {
     const transporter = nodemailer.createTransport({ host: 'smtp.gmail.com', port: 465, secure: true, auth: { user: sender.email, pass: decrypt(sender.app_password_enc) } });
     await transporter.sendMail({ from: sender.email, to: tgt.email, subject: fill(tpl.subject), text: fill(tpl.body) });
-    await log('terkirim');
-    return json({ ok: true, senderEmail: sender.email, senderMode });
+    const { data: logRow } = await log('terkirim');
+    return json({ ok: true, senderEmail: sender.email, senderMode, logId: logRow?.id || null });
   } catch (e) {
     const msg = /Invalid login|Username and Password/i.test(e.message) ? 'Login Gmail ditolak. Pemilik akun perlu memeriksa App Password.' : 'Gagal mengirim email. Coba lagi nanti.';
     await log('gagal', String(e.message || 'error').slice(0, 200));
