@@ -17,14 +17,15 @@ function Dashboard() {
   const [hist, setHist] = useState({ items: [], today: 0, limit: 10 });
   const [sel, setSel] = useState({ accountId: '', templateId: '', targetId: '' });
   const [senderMode, setSenderMode] = useState('personal');
-  const [acc, setAcc] = useState({ email: '', appPassword: '' });
+  const [acc, setAcc] = useState({ email: '', appPassword: '', sharedEnabled: true });
+  const [globalTotal, setGlobalTotal] = useState(0);
   const [phone, setPhone] = useState('');
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     const [a, n, o, h] = await Promise.all([api('/api/accounts'), api('/api/numbers'), api('/api/options'), api('/api/history')]);
-    setAccounts(a.items); setNumbers(n.items); setOpt(o); setHist(h);
+    setAccounts(a.items); setGlobalTotal(a.globalTotal || 0); setNumbers(n.items); setOpt(o); setHist(h);
     setSel((s) => ({
       accountId: a.items.some((x) => x.id === s.accountId) ? s.accountId : a.items[0]?.id || '',
       templateId: s.templateId || o.templates[0]?.id || '',
@@ -90,7 +91,7 @@ function Dashboard() {
               <b>Sender Pribadi</b><small>Pakai Gmail milikmu</small>
             </button>
             <button type="button" aria-pressed={senderMode === 'global'} className={senderMode === 'global' ? 'opt on' : 'opt'} onClick={() => setSenderMode('global')}>
-              <b>Sender Global</b><small>Gilir dari akun yang mengizinkan</small>
+              <b>Sender Global</b><small>{globalTotal} sender aktif · giliran otomatis</small>
             </button>
           </div>
           <div className="grid">
@@ -158,7 +159,7 @@ function Dashboard() {
         {note}
         <section className="card fade">
           {head}
-          <p className="muted">App Password disimpan terenkripsi dan tidak pernah ditampilkan lagi.</p>
+          <p className="muted">App Password disimpan terenkripsi dan tidak pernah ditampilkan lagi. Sender Global saat ini: {globalTotal} akun.</p>
           <ul className="list">
             {accounts.map((a) => (
               <li key={a.id}>
@@ -172,10 +173,11 @@ function Dashboard() {
             {accounts.length === 0 && <li className="empty">Belum ada akun. Tambahkan di bawah.</li>}
           </ul>
           <h3>Tambah akun</h3>
-          <form onSubmit={(e) => { e.preventDefault(); run(async () => { await api('/api/accounts', { method: 'POST', body: JSON.stringify(acc) }); setAcc({ email: '', appPassword: '' }); }, 'Akun ditambahkan.'); }}>
+          <form onSubmit={(e) => { e.preventDefault(); run(async () => { await api('/api/accounts', { method: 'POST', body: JSON.stringify(acc) }); setAcc({ email: '', appPassword: '', sharedEnabled: true }); }, acc.sharedEnabled ? 'Akun ditambahkan dan masuk Sender Global.' : 'Akun ditambahkan (pribadi saja).'); }}>
             <label>Email Gmail<input type="email" required placeholder="kamu@gmail.com" value={acc.email} onChange={(e) => setAcc({ ...acc, email: e.target.value })} /></label>
             <label>App password<input type="password" required placeholder="16 karakter" value={acc.appPassword} onChange={(e) => setAcc({ ...acc, appPassword: e.target.value })} autoComplete="off" /></label>
-            <p className="fine">Aktifkan berbagi hanya jika kamu setuju akun dipakai pengguna lain.</p>
+            <label className="inline"><input type="checkbox" checked={acc.sharedEnabled} onChange={(e) => setAcc({ ...acc, sharedEnabled: e.target.checked })} /> Masukkan ke Sender Global</label>
+            <p className="fine">{acc.sharedEnabled ? 'Akun ini ikut dipakai bergiliran oleh pengguna lain untuk mengirim email. Batas harian tiap sender tetap berlaku. Hapus centang kalau hanya mau dipakai sendiri.' : 'Akun ini hanya dipakai olehmu.'}</p>
             <button className="btn small" disabled={busy}>Tambah akun</button>
           </form>
         </section>
