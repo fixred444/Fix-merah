@@ -206,3 +206,11 @@ button.tile{width:100%;border:0}
   .list .grow{flex:1 1 100%}
   .acts{justify-content:flex-start}
 }
+
+/* ===== Admin: pengguna ===== */
+.tag.warn{background:rgba(255,196,77,.18);color:#ffd27a}
+[data-theme=comic] .tag.warn{background:#ffe08a;color:#5c3b00}
+.acts .tag{align-self:center}
+@media(max-width:560px){
+  .seg button{padding:10px 4px;font-size:.82rem}
+}
