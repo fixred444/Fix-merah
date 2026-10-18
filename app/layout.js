@@ -10,9 +10,9 @@ const themeScript = `try{document.documentElement.dataset.theme=localStorage.get
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="id" data-theme="glass" suppressHydrationWarning>
+    <html lang="id" data-theme="glass" className={`${body.variable} ${comic.variable}`} suppressHydrationWarning>
       <head><script dangerouslySetInnerHTML={{ __html: themeScript }} /></head>
-      <body className={`${body.variable} ${comic.variable}`}>
+      <body>
         <div className="bg" aria-hidden="true" />
         {children}
       </body>
