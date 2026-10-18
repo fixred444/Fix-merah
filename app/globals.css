@@ -13,7 +13,7 @@ small{font-size:.8rem}
 .wrap{max-width:980px;margin:0 auto;padding:16px}
 .center{min-height:100dvh;display:grid;place-items:center;padding:20px;position:relative}
 .topbar{position:absolute;top:14px;right:14px}
-.content{display:grid;gap:16px;margin-top:16px}
+.content{display:grid;gap:16px;margin-top:16px;align-content:start}
 .two{display:grid;gap:16px;grid-template-columns:1fr 1fr}
 .grid{display:grid;gap:12px;grid-template-columns:1fr 1fr;margin:14px 0}
 @media(max-width:720px){.two,.grid{grid-template-columns:1fr}}
@@ -113,4 +113,74 @@ th{color:var(--muted);font-weight:600}
 [data-theme=comic] .note{border:3px solid #111}
 [data-theme=comic] .muted{color:#3d3d3d}
 [data-theme=comic] .tabs{border-bottom:3px solid #111}
-@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+
+
+/* ===== Tambahan: menu per tombol & rapi ===== */
+.wrap{padding:14px 14px 40px}
+.top{position:sticky;top:10px;z-index:5;padding:12px 16px;gap:10px}
+.top .logo{width:36px;height:36px;font-size:.9rem}
+.top .brandname{font-size:1.15rem}
+.fade{animation:fade .22s ease both}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+section.fade{display:grid;gap:14px}
+.hub{display:grid;gap:14px;grid-template-columns:1fr 1fr;margin-top:16px}
+@media(max-width:560px){.hub{grid-template-columns:1fr}.top nav{order:3;width:100%;margin-right:0}.right-tools{margin-left:auto}}
+.tile{display:flex;align-items:center;gap:14px;text-align:left;font:inherit;color:var(--text);cursor:pointer;padding:20px;position:relative;transition:transform .15s}
+.tile:hover{transform:translateY(-3px)}
+.tile:active{transform:scale(.98)}
+.ticon{font-size:1.7rem;width:52px;height:52px;display:grid;place-items:center;border-radius:16px;background:var(--field);flex:none}
+.ttext{display:grid;gap:2px}
+.ttext b{font-size:1.05rem}
+.badge{position:absolute;top:12px;right:14px;min-width:26px;height:26px;padding:0 8px;border-radius:999px;display:grid;place-items:center;font-size:.8rem;font-weight:800;background:var(--accent);color:var(--on-accent)}
+.stat{display:grid;gap:12px;padding:20px 26px}
+.stat .big{font-size:2rem;margin:0 6px;line-height:1}
+.meter{height:10px;border-radius:999px;background:var(--field);overflow:hidden}
+.meter i{display:block;height:100%;background:var(--accent);border-radius:999px;transition:width .4s}
+.pagehead{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap}
+.pagehead>div{flex:1;min-width:200px}
+.back{white-space:nowrap}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px;padding:5px;border-radius:999px;background:var(--field);border:var(--chip-border)}
+.seg button{font:inherit;font-weight:700;padding:10px 12px;border:0;border-radius:999px;background:none;color:var(--muted);cursor:pointer}
+.seg button.on{background:var(--accent);color:var(--on-accent)}
+.hint{font-size:.88rem;color:var(--muted);padding:10px 14px;border-radius:12px;background:var(--field)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.empty{color:var(--muted);text-align:center;padding:22px 10px;list-style:none}
+.list li{word-break:normal;overflow-wrap:anywhere}
+.list .grow{display:grid;gap:2px;flex:1;justify-items:start}
+.btn.small{margin-top:0}
+.card h2{margin-bottom:0}
+textarea{resize:vertical;min-height:120px}
+[data-theme=glass] .tile:hover{border-color:rgba(255,255,255,.35)}
+[data-theme=glass] .seg button.on{background:var(--btn);box-shadow:var(--btn-shadow)}
+[data-theme=comic] .top{transform:none}
+[data-theme=comic] .tile{transform:rotate(-.6deg)}
+[data-theme=comic] .tile:nth-child(even){transform:rotate(.6deg)}
+[data-theme=comic] .tile:hover{transform:translate(-3px,-3px) rotate(0);box-shadow:11px 11px 0 #111,15px 15px 0 #1d4ed8}
+[data-theme=comic] .ticon{border:3px solid #111;background:#ffd23f;box-shadow:3px 3px 0 #111}
+[data-theme=comic] .badge{border:3px solid #111}
+[data-theme=comic] .meter{border:3px solid #111;background:#fff}
+[data-theme=comic] .seg{border:3px solid #111;border-radius:12px;background:#fff}
+[data-theme=comic] .seg button{border-radius:8px;font-family:var(--font-comic);font-weight:400;font-size:1.1rem;letter-spacing:.04em;color:#111}
+[data-theme=comic] .seg button.on{background:#e63946;color:#fff}
+[data-theme=comic] .hint{border:2px dashed #111;background:#fff8dc}
+[data-theme=comic] .stat .big{font-family:var(--font-comic);font-weight:400}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* ===== Tambahan: pilihan pengirim, daftar, tile rapi ===== */
+h3{font-size:1rem;margin-top:6px}
+button.tile{width:100%;border:0}
+.tile .ttext small{font-size:.82rem}
+.choice{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:480px){.choice{grid-template-columns:1fr}}
+.opt{font:inherit;text-align:left;display:grid;gap:2px;padding:12px 14px;border-radius:var(--field-radius);background:var(--field);border:var(--field-border);color:var(--text);cursor:pointer}
+.opt small{color:var(--muted);font-size:.82rem}
+.opt.on{box-shadow:0 0 0 2px var(--focus)}
+.todo{list-style:none;padding:0;display:grid;gap:4px;font-size:.9rem;color:var(--muted)}
+.fine{font-size:.82rem;color:var(--muted)}
+.acts{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.chip.danger{color:var(--danger)}
+.list li small{display:block}
+.pagehead h2{margin:0}
+[data-theme=comic] .opt{border:3px solid #111;background:#fff;box-shadow:3px 3px 0 #111}
+[data-theme=comic] .opt.on{background:#ffd23f;box-shadow:3px 3px 0 #111}
+[data-theme=comic] .chip.danger{color:#d00f20}
