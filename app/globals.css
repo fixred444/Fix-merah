@@ -184,3 +184,18 @@ button.tile{width:100%;border:0}
 [data-theme=comic] .opt{border:3px solid #111;background:#fff;box-shadow:3px 3px 0 #111}
 [data-theme=comic] .opt.on{background:#ffd23f;box-shadow:3px 3px 0 #111}
 [data-theme=comic] .chip.danger{color:#d00f20}
+
+/* ===== Header rapi di HP, tile lebar, pilihan nomor ===== */
+.tile.wide{grid-column:1/-1}
+.picks{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.picks .chip{font-weight:500}
+@media(max-width:560px){
+  .top{display:flex;flex-wrap:wrap;justify-content:flex-start;align-items:center;gap:8px;padding:12px 14px}
+  .top .brand{width:100%;margin-bottom:2px}
+  .top nav,.right-tools{display:contents}
+  .top .nav,.top .chip{font-size:.85rem;padding:8px 14px;margin:0}
+  .top .nav{background:var(--chip);border:var(--chip-border)}
+  .top .nav.on{background:var(--btn);color:var(--on-accent);border-color:transparent}
+}
+[data-theme=comic] .top .nav{border:3px solid #111}
+[data-theme=comic] .top .nav.on{background:#e63946;color:#fff}
