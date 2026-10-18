@@ -22,6 +22,9 @@ function Dashboard() {
   const [phone, setPhone] = useState('');
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [replied, setReplied] = useState(null); // { phone } saat WhatsApp sudah membalas
+  const [until, setUntil] = useState(0);        // waktu selesai hitung mundur (ms)
+  const [now, setNow] = useState(() => Date.now());
 
   const load = useCallback(async () => {
     const [a, n, o, h] = await Promise.all([api('/api/accounts'), api('/api/numbers'), api('/api/options'), api('/api/history')]);
@@ -34,6 +37,52 @@ function Dashboard() {
   }, []);
   useEffect(() => { load().catch((e) => setMsg({ err: true, t: e.message })); }, [load]);
 
+  // Pulihkan hitung mundur kalau halaman dimuat ulang saat masih berjalan.
+  useEffect(() => {
+    try {
+      const s = JSON.parse(localStorage.getItem('fm_reply') || 'null');
+      if (s && s.until > Date.now()) { setReplied({ phone: s.phone }); setUntil(s.until); setNow(Date.now()); }
+    } catch {}
+  }, []);
+
+  // Detak hitung mundur.
+  useEffect(() => {
+    if (until <= Date.now()) return undefined;
+    const t = setInterval(() => { setNow(Date.now()); if (Date.now() >= until) clearInterval(t); }, 500);
+    return () => clearInterval(t);
+  }, [until]);
+
+  const gotReply = useCallback((phone) => {
+    const end = Date.now() + 60000;
+    setReplied({ phone }); setUntil(end); setNow(Date.now());
+    try { localStorage.setItem('fm_reply', JSON.stringify({ phone, until: end })); } catch {}
+    try { if (navigator.vibrate) navigator.vibrate(200); } catch {}
+  }, []);
+
+  // Cek balasan WhatsApp di Gmail untuk pengiriman terbaru yang belum dibalas (selama halaman terbuka).
+  const pending = hist.items
+    .filter((h) => h.status === 'terkirim' && !h.replied_at && Date.now() - new Date(h.created_at).getTime() < 24 * 3600e3)
+    .slice(0, 3).map((h) => h.id).join(',');
+  useEffect(() => {
+    if (!pending) return undefined;
+    let stop = false; let working = false;
+    const tick = async () => {
+      if (working || stop) return;
+      working = true;
+      for (const id of pending.split(',')) {
+        if (stop) break;
+        try {
+          const r = await api(`/api/reply?id=${id}`);
+          if (r.replied && !stop) { gotReply(r.phone); await load(); break; }
+        } catch {}
+      }
+      working = false;
+    };
+    const first = setTimeout(tick, 5000);
+    const t = setInterval(tick, 20000);
+    return () => { stop = true; clearTimeout(first); clearInterval(t); };
+  }, [pending, gotReply, load]);
+
   const run = async (fn, okText) => {
     setMsg(null); setBusy(true);
     try { await fn(); if (okText) setMsg({ t: okText }); await load(); }
@@ -42,11 +91,36 @@ function Dashboard() {
   };
   const open = (id) => { setView(id); setMsg(null); if (typeof window !== 'undefined') window.scrollTo({ top: 0 }); };
 
-  const ready = (senderMode === 'global' || sel.accountId) && phone.trim() && sel.templateId && sel.targetId;
+  const wait = Math.max(0, Math.ceil((until - now) / 1000));
+  const clock = `${Math.floor(wait / 60)}:${String(wait % 60).padStart(2, '0')}`;
+  const ready = (senderMode === 'global' || sel.accountId) && phone.trim() && sel.templateId && sel.targetId && wait === 0;
   const pct = Math.min(100, Math.round((hist.today / Math.max(1, hist.limit)) * 100));
   const counts = { akun: accounts.length, riwayat: hist.items.length };
 
-  const note = msg && <p className={msg.err ? 'note err' : 'note ok'} role="status">{msg.t}</p>;
+  const closeReply = () => { setReplied(null); try { localStorage.removeItem('fm_reply'); } catch {} };
+  const banner = replied && (
+    <section className="card fade" role="status" aria-live="polite">
+      <b>💬 WhatsApp sudah merespon{replied.phone ? ` (${replied.phone})` : ''}</b>
+      {wait > 0 ? (
+        <>
+          <p className="muted">Tunggu dulu sebelum mengirim lagi.</p>
+          <b className="big">{clock}</b>
+          <div className="meter" role="progressbar" aria-valuemin={0} aria-valuemax={60} aria-valuenow={wait}><i style={{ width: `${(wait / 60) * 100}%` }} /></div>
+        </>
+      ) : (
+        <>
+          <p className="muted">Waktu tunggu selesai. Silakan cek WhatsApp-mu.</p>
+          <button type="button" className="chip" onClick={closeReply}>Tutup</button>
+        </>
+      )}
+    </section>
+  );
+  const note = (
+    <>
+      {msg && <p className={msg.err ? 'note err' : 'note ok'} role="status">{msg.t}</p>}
+      {banner}
+    </>
+  );
 
   if (!view) {
     return (
@@ -143,9 +217,9 @@ function Dashboard() {
                 if (!num) throw new Error('Nomor gagal disimpan, coba lagi.');
               }
               const result = await api('/api/send', { method: 'POST', body: JSON.stringify({ ...sel, numberId: num.id, senderMode }) });
-              if (result.senderEmail) setMsg({ t: `Email terkirim melalui ${result.senderEmail}.` });
+              if (result.senderEmail) setMsg({ t: `Email terkirim melalui ${result.senderEmail}. Kamu akan diberi tahu saat WhatsApp merespon (biarkan halaman ini terbuka).` });
             }, 'Email terkirim.')}>
-            {busy ? 'Mengirim…' : 'Kirim sekarang'}
+            {busy ? 'Mengirim…' : wait > 0 ? `Tunggu ${clock}` : 'Kirim sekarang'}
           </button>
           <p className="fine">Sisa kuota hari ini: {Math.max(0, hist.limit - hist.today)}. Gunakan hanya untuk permohonan yang benar.</p>
         </section>
