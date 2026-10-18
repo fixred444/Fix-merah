@@ -22,6 +22,17 @@ export default function Shell({ children, adminOnly = false, active }) {
   }, [r, adminOnly]);
 
   if (!me) return <main className="center"><p className="muted">Memuat…</p></main>;
+  if (me.status === 'nonaktif') {
+    return (
+      <main className="center">
+        <section className="card auth">
+          <h2>Akun dinonaktifkan</h2>
+          <p className="muted">Akunmu dinonaktifkan oleh admin{me.note ? `: ${me.note}` : '.'} Hubungi admin kalau ini keliru.</p>
+          <button className="btn" onClick={async () => { await supabase.auth.signOut(); r.replace('/masuk'); }}>Keluar</button>
+        </section>
+      </main>
+    );
+  }
   return (
     <div className="wrap">
       <header className="top card">
@@ -35,7 +46,10 @@ export default function Shell({ children, adminOnly = false, active }) {
           <button className="chip" onClick={async () => { await supabase.auth.signOut(); r.replace('/masuk'); }}>Keluar</button>
         </div>
       </header>
-      <div className="content">{children(me)}</div>
+      <div className="content">
+        {me.status === 'beku' && <p className="note err" role="status">Akunmu sedang dibekukan admin{me.note ? `: ${me.note}` : '.'} Kamu masih bisa melihat data, tapi belum bisa mengirim.</p>}
+        {children(me)}
+      </div>
     </div>
   );
 }
