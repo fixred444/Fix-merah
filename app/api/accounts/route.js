@@ -4,8 +4,13 @@ export async function GET(req) {
   const u = await getUser(req);
   if (!u) return json({ error: 'Belum masuk' }, 401);
   const { data } = await db().from('accounts').select('id,email,shared_enabled,created_at').eq('user_id', u.id).order('created_at');
-  const { count } = await db().from('accounts').select('id', { count: 'exact', head: true }).eq('shared_enabled', true);
-  return json({ items: data || [], globalTotal: count || 0 });
+  const [{ data: shared }, { data: blocked }] = await Promise.all([
+    db().from('accounts').select('user_id').eq('shared_enabled', true),
+    db().from('user_status').select('user_id').in('status', ['beku', 'nonaktif']),
+  ]);
+  const blockedIds = new Set((blocked || []).map((b) => b.user_id));
+  const globalTotal = (shared || []).filter((a) => !blockedIds.has(a.user_id)).length;
+  return json({ items: data || [], globalTotal });
 }
 
 export async function POST(req) {
