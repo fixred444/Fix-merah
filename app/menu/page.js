@@ -5,6 +5,9 @@ import Shell from '@/components/Shell';
 import Stories from '@/components/Stories';
 import Reviews from '@/components/Reviews';
 import GlobalChat from '@/components/GlobalChat';
+import People from '@/components/People';
+import Profile from '@/components/Profile';
+import DirectMessages from '@/components/DirectMessages';
 
 const SECTIONS = {
   kirim: { icon: '\u{1F4E8}', title: 'Kirim permohonan', hint: 'Ketik nomor, pilih teks, lalu kirim' },
@@ -12,10 +15,15 @@ const SECTIONS = {
   riwayat: { icon: '\u{1F558}', title: 'Riwayat', hint: 'Lihat pengiriman sebelumnya' },
   ulasan: { icon: '\u2B50', title: 'Ulasan', hint: 'Beri ulasan, dibalas admin' },
   chat: { icon: '\u{1F4AC}', title: 'Chat global', hint: 'Ngobrol dengan semua pengguna' },
+  orang: { icon: '\u{1F465}', title: 'Orang', hint: 'Cari pengguna dan ikuti' },
+  dm: { icon: '\u2709\uFE0F', title: 'Pesan pribadi', hint: 'Chat privat dengan pengguna lain' },
+  profil: { icon: '\u{1F464}', title: 'Profil', hint: 'Lihat dan ubah profilmu' },
 };
 
 function Dashboard() {
   const [view, setView] = useState(null);
+  const [target, setTarget] = useState(null); // id pengguna untuk profil / DM
+  const [dmUnread, setDmUnread] = useState(0);
   const [accounts, setAccounts] = useState([]);
   const [numbers, setNumbers] = useState([]);
   const [opt, setOpt] = useState({ templates: [], targets: [] });
@@ -109,13 +117,31 @@ function Dashboard() {
     catch (e) { setMsg({ err: true, t: e.message }); }
     setBusy(false);
   };
-  const open = (id) => { setView(id); setMsg(null); if (typeof window !== 'undefined') window.scrollTo({ top: 0 }); };
+  const open = (id) => { setView(id); setTarget(id === 'profil' ? 'me' : null); setMsg(null); if (typeof window !== 'undefined') window.scrollTo({ top: 0 }); };
+  const openProfile = (id) => { setTarget(id); setView('profil'); setMsg(null); if (typeof window !== 'undefined') window.scrollTo({ top: 0 }); };
+  const openDm = (id) => { setTarget(id); setView('dm'); setMsg(null); if (typeof window !== 'undefined') window.scrollTo({ top: 0 }); };
+
+  // Buka DM langsung dari ketukan notifikasi (/menu?dm=<id>).
+  useEffect(() => {
+    try {
+      const sp = new URLSearchParams(window.location.search); const id = sp.get('dm');
+      if (id && /^[0-9a-f-]{36}$/i.test(id)) { openDm(id); window.history.replaceState(null, '', '/menu'); }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Jumlah pesan pribadi belum dibaca untuk lencana di menu.
+  useEffect(() => {
+    const tick = async () => { if (document.hidden) return; try { const r = await api('/api/dm?unread=1'); setDmUnread(r.unread || 0); } catch {} };
+    tick(); const t = setInterval(tick, 15000);
+    return () => clearInterval(t);
+  }, [view]);
 
   const wait = Math.max(0, Math.ceil((until - now) / 1000));
   const clock = `${Math.floor(wait / 60)}:${String(wait % 60).padStart(2, '0')}`;
   const ready = (senderMode === 'global' || sel.accountId) && phone.trim() && sel.templateId && sel.targetId && wait === 0;
   const pct = Math.min(100, Math.round((hist.today / Math.max(1, hist.limit)) * 100));
-  const counts = { akun: accounts.length, riwayat: hist.items.length };
+  const counts = { akun: accounts.length, riwayat: hist.items.length, ...(dmUnread > 0 ? { dm: dmUnread } : {}) };
 
   const closeReply = () => { setReplied(null); try { localStorage.removeItem('fm_reply'); } catch {} };
   const banner = replied && (
@@ -196,8 +222,11 @@ function Dashboard() {
     </div>
   );
 
-  if (view === 'ulasan') return <Reviews head={head} />;
-  if (view === 'chat') return <GlobalChat head={head} />;
+  if (view === 'ulasan') return <Reviews head={head} onProfile={openProfile} />;
+  if (view === 'chat') return <GlobalChat head={head} onProfile={openProfile} />;
+  if (view === 'orang') return <People head={head} onProfile={openProfile} />;
+  if (view === 'profil') return <Profile head={head} id={target || 'me'} onProfile={openProfile} onDm={openDm} />;
+  if (view === 'dm') return <DirectMessages head={head} peerId={target} onPick={openDm} onFind={() => open('orang')} onProfile={openProfile} />;
 
   if (view === 'kirim') {
     const missing = [];
