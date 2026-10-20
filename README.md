@@ -27,3 +27,12 @@ Login/daftar, menu utama bertema liquid glass (bisa ganti ke komik 3D), kirim em
 4. Admin dapat mengatur kuota harian per pengguna dari halaman Admin. `PER_SENDER_DAILY_LIMIT` membatasi pengiriman per akun global per hari (default 10; maksimum efektif 20).
 5. Rotasi global hanya membantu membagi pemakaian antar-pengirim yang setuju; fitur ini tidak dimaksudkan untuk melewati batas Gmail atau kebijakan penyedia. Gunakan untuk email yang sah, relevan, dan tidak berulang secara massal.
 6. Setelah mengubah schema, commit semua file ke GitHub lalu deploy ulang di Vercel. Pastikan environment variables dari `.env.example` terisi di Vercel.
+
+## Notifikasi HP (panel notifikasi sistem)
+
+Pengumuman admin juga muncul sebagai notifikasi biasa di panel notifikasi HP (Web Push), meski tab sedang di latar belakang atau layar terkunci.
+
+1. Jalankan `supabase/push.sql` di Supabase SQL Editor (atau `update-semua.sql` yang sudah memuatnya).
+2. Buat kunci: `npx web-push generate-vapid-keys`. Isi `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, dan `VAPID_SUBJECT` (`mailto:emailmu`) di Vercel → Environment Variables, lalu Redeploy.
+3. Setiap pengguna menekan **Aktifkan notifikasi** sekali di halaman menu dan memilih Izinkan.
+4. Android/Chrome: langsung bekerja. iPhone: wajib "Tambah ke Layar Utama" (iOS 16.4+) lalu buka dari ikonnya.
