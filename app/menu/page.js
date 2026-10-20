@@ -3,11 +3,15 @@ import { useCallback, useEffect, useState } from 'react';
 import { api } from '@/lib/client';
 import Shell from '@/components/Shell';
 import Stories from '@/components/Stories';
+import Reviews from '@/components/Reviews';
+import GlobalChat from '@/components/GlobalChat';
 
 const SECTIONS = {
   kirim: { icon: '\u{1F4E8}', title: 'Kirim permohonan', hint: 'Ketik nomor, pilih teks, lalu kirim' },
   akun: { icon: '\u{1F511}', title: 'Akun Gmail', hint: 'Tambah atau hapus akun pengirim' },
   riwayat: { icon: '\u{1F558}', title: 'Riwayat', hint: 'Lihat pengiriman sebelumnya' },
+  ulasan: { icon: '\u2B50', title: 'Ulasan', hint: 'Beri ulasan, dibalas admin' },
+  chat: { icon: '\u{1F4AC}', title: 'Chat global', hint: 'Ngobrol dengan semua pengguna' },
 };
 
 function Dashboard() {
@@ -192,6 +196,9 @@ function Dashboard() {
     </div>
   );
 
+  if (view === 'ulasan') return <Reviews head={head} />;
+  if (view === 'chat') return <GlobalChat head={head} />;
+
   if (view === 'kirim') {
     const missing = [];
     if (senderMode === 'personal' && !sel.accountId) missing.push({ t: 'Tambah akun Gmail dulu', to: 'akun' });
@@ -326,4 +333,4 @@ function Dashboard() {
 
 export default function Menu() {
   return <Shell active="menu">{() => <Dashboard />}</Shell>;
-  }
+}
