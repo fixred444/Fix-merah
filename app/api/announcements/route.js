@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { db, getUser, json } from '@/lib/server';
+import { pushToAll } from '@/lib/push';
 
 export const runtime = 'nodejs';
 
@@ -58,7 +59,11 @@ async function handlePOST(req) {
     const audioUrl = audioPath ? db().storage.from(BUCKET).getPublicUrl(audioPath).data.publicUrl : null;
     const { data, error } = await db().from('announcements').insert({ kind: audioPath ? 'voice' : 'text', body: text || null, audio_path: audioPath, audio_url: audioUrl, created_by: u.id }).select('id').single();
     if (error) return json({ error: `Gagal menyimpan notifikasi. ${SQL_HINT}` }, 500);
-    return json({ ok: true, id: data.id });
+    let push = { sent: 0, failed: 0 };
+    try {
+      push = await pushToAll({ title: 'Pengumuman', body: text || '\u{1F3A4} Pesan suara dari admin', tag: `ann-${data.id}`, url: '/menu', ts: Date.now() });
+    } catch { /* push gagal tidak boleh membatalkan pengumuman */ }
+    return json({ ok: true, id: data.id, push });
   }
 
   return json({ error: 'Permintaan tidak valid' }, 400);
