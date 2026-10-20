@@ -1,6 +1,6 @@
 'use client';
-import { useCallback, useEffect, useState } from 'react';
-import { api } from '@/lib/client';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { api, supabase } from '@/lib/client';
 import Shell from '@/components/Shell';
 
 function ago(iso) {
@@ -150,6 +150,128 @@ function Gmails({ onMsg }) {
   );
 }
 
+const AUDIO_BY_EXT = { mp3: 'audio/mpeg', m4a: 'audio/mp4', aac: 'audio/aac', ogg: 'audio/ogg', wav: 'audio/wav', webm: 'audio/webm' };
+
+function Notif({ onMsg }) {
+  const [text, setText] = useState('');
+  const [audio, setAudio] = useState(null);
+  const [rec, setRec] = useState(false);
+  const [secs, setSecs] = useState(0);
+  const [busy, setBusy] = useState('');
+  const [list, setList] = useState(null);
+  const recRef = useRef(null);
+  const chunks = useRef([]);
+  const tick = useRef(null);
+  const audioSrc = useMemo(() => (audio ? URL.createObjectURL(audio) : ''), [audio]);
+  useEffect(() => () => { if (audioSrc) URL.revokeObjectURL(audioSrc); }, [audioSrc]);
+
+  const load = useCallback(async () => { const r = await api('/api/announcements?all=1'); setList(r.items || []); }, []);
+  useEffect(() => { load().catch((e) => onMsg({ err: true, t: e.message })); }, [load, onMsg]);
+
+  const stopRec = useCallback(() => { const mr = recRef.current; if (mr && mr.state === 'recording') mr.stop(); }, []);
+  useEffect(() => { if (rec && secs >= 60) stopRec(); }, [rec, secs, stopRec]);
+  useEffect(() => () => { clearInterval(tick.current); stopRec(); }, [stopRec]);
+
+  const startRec = async () => {
+    onMsg(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mime = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'].find((t) => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || '';
+      const mr = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+      chunks.current = [];
+      mr.ondataavailable = (e) => { if (e.data && e.data.size) chunks.current.push(e.data); };
+      mr.onstop = () => {
+        stream.getTracks().forEach((t) => t.stop());
+        clearInterval(tick.current);
+        const type = (mr.mimeType || mime || 'audio/webm').split(';')[0];
+        setAudio(new File([new Blob(chunks.current, { type })], type.includes('mp4') ? 'vn.m4a' : 'vn.webm', { type }));
+        setRec(false);
+      };
+      mr.start();
+      recRef.current = mr; setAudio(null); setSecs(0); setRec(true);
+      tick.current = setInterval(() => setSecs((x) => x + 1), 1000);
+    } catch { onMsg({ err: true, t: 'Mikrofon tidak bisa diakses. Izinkan akses mikrofon, atau unggah file audio.' }); }
+  };
+
+  const pickFile = (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    const ext = (f.name.split('.').pop() || '').toLowerCase();
+    const type = f.type.startsWith('audio/') ? f.type.split(';')[0] : AUDIO_BY_EXT[ext];
+    if (!type) { onMsg({ err: true, t: 'Pilih file audio (MP3, M4A, AAC, OGG, WAV).' }); return; }
+    if (f.size > 5 * 1048576) { onMsg({ err: true, t: 'VN maksimal 5 MB.' }); return; }
+    onMsg(null);
+    setAudio(new File([f], f.name, { type }));
+  };
+
+  const send = async () => {
+    if (!text.trim() && !audio) { onMsg({ err: true, t: 'Isi teks atau rekam/unggah VN dulu.' }); return; }
+    setBusy('Mengirim...'); onMsg(null);
+    try {
+      let audioPath = null;
+      if (audio) {
+        const sign = await api('/api/announcements', { method: 'POST', body: JSON.stringify({ step: 'sign', audio: { type: audio.type, size: audio.size } }) });
+        const { error } = await supabase.storage.from('stories').uploadToSignedUrl(sign.path, sign.token, audio, { contentType: audio.type });
+        if (error) throw new Error('Gagal mengunggah VN. Coba lagi.');
+        audioPath = sign.path;
+      }
+      await api('/api/announcements', { method: 'POST', body: JSON.stringify({ step: 'create', text: text.trim(), audioPath }) });
+      setText(''); setAudio(null);
+      onMsg({ t: 'Notifikasi terkirim. Pengguna akan melihatnya dalam beberapa detik.' });
+      await load();
+    } catch (e) { onMsg({ err: true, t: e.message }); }
+    setBusy('');
+  };
+
+  const remove = async (a) => {
+    if (!window.confirm('Hapus notifikasi ini?')) return;
+    try { await api(`/api/announcements?id=${a.id}`, { method: 'DELETE' }); await load(); } catch (e) { onMsg({ err: true, t: e.message }); }
+  };
+
+  const clock = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+  return (
+    <section className="card fade">
+      <h2>Notifikasi</h2>
+      <p className="hint">Teks atau pesan suara (VN) yang muncul di atas layar semua pengguna selama beberapa detik. Teks tampil 7 detik. VN tampil sampai selesai diputar.</p>
+      <label>Teks (maks. 200 huruf)
+        <input type="text" maxLength={200} value={text} onChange={(e) => setText(e.target.value)} placeholder="Tulis pengumuman..." disabled={!!busy} />
+      </label>
+      <div className="acts">
+        {!rec
+          ? <button type="button" className="chip" onClick={startRec} disabled={!!busy}>Rekam VN</button>
+          : <button type="button" className="chip danger" onClick={stopRec}>Berhenti ({clock})</button>}
+        <label className="chip" style={{ cursor: 'pointer' }}>
+          Unggah audio
+          <input type="file" accept="audio/*,.mp3,.m4a,.aac,.ogg,.wav" onChange={pickFile} disabled={!!busy || rec} style={{ display: 'none' }} />
+        </label>
+      </div>
+      {rec && <p className="muted" role="status">Merekam&hellip; maksimal 60 detik.</p>}
+      {audio && !rec && (
+        <>
+          <audio src={audioSrc} controls style={{ width: '100%' }} />
+          <button type="button" className="chip" onClick={() => setAudio(null)} disabled={!!busy}>Buang VN</button>
+        </>
+      )}
+      <button type="button" className="btn" onClick={send} disabled={!!busy || rec || (!text.trim() && !audio)}>{busy || 'Kirim notifikasi'}</button>
+
+      <h3>Riwayat</h3>
+      <ul className="list">
+        {(list || []).map((a) => (
+          <li key={a.id}>
+            <span className="grow">
+              <b>{a.text || 'Pesan suara'}</b>
+              <small className="muted">{a.kind === 'voice' ? 'VN' : 'Teks'} &middot; {ago(a.createdAt)}</small>
+            </span>
+            <span className="acts"><button className="chip danger" onClick={() => remove(a)}>Hapus</button></span>
+          </li>
+        ))}
+        {list && list.length === 0 && <li className="empty">Belum ada notifikasi.</li>}
+        {!list && <li className="empty">Memuat&hellip;</li>}
+      </ul>
+    </section>
+  );
+}
+
 function Panel() {
   const [tab, setTab] = useState('pengguna');
   const [tpls, setTpls] = useState([]);
@@ -185,13 +307,14 @@ function Panel() {
       {msg && <p className={msg.err ? 'note err' : 'note ok'} role="status">{msg.t}</p>}
 
       <div className="seg" role="tablist" aria-label="Bagian admin">
-        {[['pengguna', 'Pengguna'], ['gmail', 'Gmail'], ['kuota', 'Kuota'], ['teks', 'Teks'], ['tujuan', 'Tujuan']].map(([k, l]) => (
+        {[['pengguna', 'Pengguna'], ['gmail', 'Gmail'], ['notif', 'Notif'], ['kuota', 'Kuota'], ['teks', 'Teks'], ['tujuan', 'Tujuan']].map(([k, l]) => (
           <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => { setTab(k); setMsg(null); }}>{l}</button>
         ))}
       </div>
 
       {tab === 'pengguna' && <Users onMsg={setMsg} />}
       {tab === 'gmail' && <Gmails onMsg={setMsg} />}
+      {tab === 'notif' && <Notif onMsg={setMsg} />}
 
       {tab === 'kuota' && <section className="card fade">
         <h2>Kuota pengiriman</h2>
@@ -253,4 +376,4 @@ function Panel() {
 
 export default function Admin() {
   return <Shell adminOnly active="admin">{() => <Panel />}</Shell>;
-    }
+}
