@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, supabase } from '@/lib/client';
 import Shell from '@/components/Shell';
+import AdminVerify from '@/components/AdminVerify';
 
 function ago(iso) {
   if (!iso) return 'belum pernah';
@@ -307,7 +308,7 @@ function Panel() {
       {msg && <p className={msg.err ? 'note err' : 'note ok'} role="status">{msg.t}</p>}
 
       <div className="seg" role="tablist" aria-label="Bagian admin">
-        {[['pengguna', 'Pengguna'], ['gmail', 'Gmail'], ['notif', 'Notif'], ['kuota', 'Kuota'], ['teks', 'Teks'], ['tujuan', 'Tujuan']].map(([k, l]) => (
+        {[['pengguna', 'Pengguna'], ['gmail', 'Gmail'], ['notif', 'Notif'], ['centang', 'Centang'], ['kuota', 'Kuota'], ['teks', 'Teks'], ['tujuan', 'Tujuan']].map(([k, l]) => (
           <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => { setTab(k); setMsg(null); }}>{l}</button>
         ))}
       </div>
@@ -315,6 +316,7 @@ function Panel() {
       {tab === 'pengguna' && <Users onMsg={setMsg} />}
       {tab === 'gmail' && <Gmails onMsg={setMsg} />}
       {tab === 'notif' && <Notif onMsg={setMsg} />}
+      {tab === 'centang' && <AdminVerify onMsg={setMsg} />}
 
       {tab === 'kuota' && <section className="card fade">
         <h2>Kuota pengiriman</h2>
