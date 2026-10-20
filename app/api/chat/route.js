@@ -1,10 +1,10 @@
-import { db, getUser, json } from '@/lib/server';
+import { db, getUser, isVerified, json, profileMap } from '@/lib/server';
 
 export const runtime = 'nodejs';
 const SQL_HINT = 'Pastikan SQL ulasan & chat (supabase/ulasan-chat.sql) sudah dijalankan di Supabase.';
 const KEEP_DAYS = 7;
 
-const shape = (m, u) => ({ id: m.id, author: m.author, isAdmin: !!m.is_admin, body: m.body, createdAt: m.created_at, mine: m.user_id === u.id, canDelete: m.user_id === u.id || u.isAdmin });
+const shape = (m, u, pm) => ({ id: m.id, userId: m.user_id, author: pm?.get(m.user_id)?.name || m.author, verified: isVerified(pm?.get(m.user_id)) || !!m.is_admin, isAdmin: !!m.is_admin, body: m.body, createdAt: m.created_at, mine: m.user_id === u.id, canDelete: m.user_id === u.id || u.isAdmin });
 
 // ?after=<waktu>: hanya pesan yang lebih baru. Tanpa after: 60 pesan terakhir.
 async function handleGET(req) {
@@ -21,7 +21,8 @@ async function handleGET(req) {
     if (error) return json({ error: `Gagal memuat chat. ${SQL_HINT}` }, 500);
     rows = (data || []).reverse();
   }
-  return json({ items: rows.map((m) => shape(m, u)) });
+  const pm = await profileMap(rows.map((m) => m.user_id));
+  return json({ items: rows.map((m) => shape(m, u, pm)) });
 }
 
 async function handlePOST(req) {
@@ -39,7 +40,7 @@ async function handlePOST(req) {
   if (error) return json({ error: `Gagal mengirim. ${SQL_HINT}` }, 500);
   // bersihkan pesan lama sesekali
   if (Math.random() < 0.05) { try { await db().from('chat_messages').delete().lt('created_at', new Date(Date.now() - KEEP_DAYS * 86400e3).toISOString()); } catch {} }
-  return json({ ok: true, item: shape(data, u) });
+  return json({ ok: true, item: shape(data, u, await profileMap([u.id])) });
 }
 
 async function handleDELETE(req) {
