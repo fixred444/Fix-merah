@@ -1,11 +1,12 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '@/lib/client';
+import Verified from './Verified';
 
 const POLL_MS = 3000;
 const hhmm = (iso) => new Date(iso).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 
-export default function GlobalChat({ head }) {
+export default function GlobalChat({ head, onProfile }) {
   const [msgs, setMsgs] = useState([]);
   const [text, setText] = useState('');
   const [err, setErr] = useState('');
@@ -75,7 +76,13 @@ export default function GlobalChat({ head }) {
         {msgs.length === 0 && <p className="muted" style={{ textAlign: 'center', margin: 'auto' }}>Belum ada pesan. Sapa yang lain!</p>}
         {msgs.map((m) => (
           <div key={m.id} style={{ justifySelf: m.mine ? 'end' : 'start', maxWidth: '86%', padding: '8px 12px', borderRadius: 16, background: m.mine ? 'var(--accent)' : 'var(--chip)', color: m.mine ? 'var(--on-accent)' : 'var(--text)', overflowWrap: 'anywhere' }}>
-            {!m.mine && <b style={{ display: 'block', fontSize: '.8rem' }}>{m.author}{m.isAdmin && <span className="tag ok" style={{ marginLeft: 6 }}>Admin</span>}</b>}
+            {!m.mine && (
+              <b style={{ display: 'flex', alignItems: 'center', fontSize: '.8rem' }}>
+                <button type="button" onClick={() => onProfile && onProfile(m.userId)} style={{ background: 'none', border: 0, color: 'inherit', font: 'inherit', fontWeight: 700, cursor: 'pointer', padding: 0, textAlign: 'left' }}>{m.author}</button>
+                {m.verified && <Verified size={14} />}
+                {m.isAdmin && <span className="tag ok" style={{ marginLeft: 6 }}>Admin</span>}
+              </b>
+            )}
             <span>{m.body}</span>
             <small style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', opacity: 0.7 }}>
               {hhmm(m.createdAt)}

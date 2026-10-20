@@ -1,11 +1,12 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '@/lib/client';
+import Verified from './Verified';
 
 const stars = (n) => '★'.repeat(n) + '☆'.repeat(5 - n);
 const when = (iso) => new Date(iso).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
 
-export default function Reviews({ head }) {
+export default function Reviews({ head, onProfile }) {
   const [data, setData] = useState({ items: [], avg: 0, count: 0, isAdmin: false });
   const [loaded, setLoaded] = useState(false);
   const [rating, setRating] = useState(0);
@@ -49,7 +50,10 @@ export default function Reviews({ head }) {
         {data.items.map((r) => (
           <li key={r.id} style={{ display: 'grid', gap: 6, wordBreak: 'normal', overflowWrap: 'anywhere' }}>
             <span style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-              <b>{r.mine ? 'Kamu' : r.author}</b>
+              <b style={{ display: 'flex', alignItems: 'center' }}>
+                <button type="button" onClick={() => onProfile && onProfile(r.userId)} style={{ background: 'none', border: 0, color: 'inherit', font: 'inherit', fontWeight: 700, cursor: 'pointer', padding: 0, textAlign: 'left' }}>{r.mine ? 'Kamu' : r.author}</button>
+                {r.verified && <Verified size={15} />}
+              </b>
               <span style={{ color: '#f5b301' }} aria-label={`${r.rating} dari 5 bintang`}>{stars(r.rating)}</span>
             </span>
             <span>{r.body}</span>
