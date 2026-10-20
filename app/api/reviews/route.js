@@ -1,4 +1,4 @@
-import { db, getUser, json, startOfTodayWIB } from '@/lib/server';
+import { db, getUser, isVerified, json, profileMap, startOfTodayWIB } from '@/lib/server';
 import { pushToAll } from '@/lib/push';
 
 export const runtime = 'nodejs';
@@ -13,8 +13,9 @@ async function handleGET(req) {
   const { data: rs } = await db().from('reviews').select('rating').limit(5000);
   const count = rs?.length || 0;
   const avg = count ? rs.reduce((a, r) => a + r.rating, 0) / count : 0;
+  const pm = await profileMap((data || []).map((r) => r.user_id));
   const items = (data || []).map((r) => ({
-    id: r.id, author: r.author, rating: r.rating, body: r.body, reply: r.admin_reply || '', repliedAt: r.replied_at, createdAt: r.created_at,
+    id: r.id, userId: r.user_id, verified: isVerified(pm.get(r.user_id)), author: pm.get(r.user_id)?.name || r.author, rating: r.rating, body: r.body, reply: r.admin_reply || '', repliedAt: r.replied_at, createdAt: r.created_at,
     mine: r.user_id === u.id, canDelete: r.user_id === u.id || u.isAdmin,
   }));
   return json({ items, avg: Math.round(avg * 10) / 10, count, isAdmin: u.isAdmin });
