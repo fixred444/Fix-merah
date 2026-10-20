@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase, api } from '@/lib/client';
 import ThemeToggle from './ThemeToggle';
+import Announcer from './Announcer';
 
 export default function Shell({ children, adminOnly = false, active }) {
   const r = useRouter();
@@ -21,7 +22,7 @@ export default function Shell({ children, adminOnly = false, active }) {
     })();
   }, [r, adminOnly]);
 
-  if (!me) return <main className="center"><p className="muted">Memuat…</p></main>;
+  if (!me) return <main className="center"><p className="muted">Memuat&hellip;</p></main>;
   if (me.status === 'nonaktif') {
     return (
       <main className="center">
@@ -35,6 +36,7 @@ export default function Shell({ children, adminOnly = false, active }) {
   }
   return (
     <div className="wrap">
+      <Announcer />
       <header className="top card">
         <div className="brand"><span className="logo">FM</span><span className="brandname">Fix Merah</span></div>
         <nav>
