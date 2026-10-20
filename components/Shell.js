@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { supabase, api } from '@/lib/client';
 import ThemeToggle from './ThemeToggle';
 import Announcer from './Announcer';
+import PushPrompt from './PushPrompt';
 
 export default function Shell({ children, adminOnly = false, active }) {
   const r = useRouter();
@@ -50,6 +51,7 @@ export default function Shell({ children, adminOnly = false, active }) {
       </header>
       <div className="content">
         {me.status === 'beku' && <p className="note err" role="status">Akunmu sedang dibekukan admin{me.note ? `: ${me.note}` : '.'} Kamu masih bisa melihat data, tapi belum bisa mengirim.</p>}
+        <PushPrompt />
         {children(me)}
       </div>
     </div>

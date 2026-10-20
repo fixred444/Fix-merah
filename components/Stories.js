@@ -267,4 +267,4 @@ export default function Stories() {
       {viewer !== null && groups[viewer] && <Viewer groups={groups} start={viewer} onClose={() => setViewer(null)} onDelete={remove} />}
     </section>
   );
-    }
+}
