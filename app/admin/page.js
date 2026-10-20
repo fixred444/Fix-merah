@@ -217,7 +217,7 @@ function Notif({ onMsg }) {
       }
       await api('/api/announcements', { method: 'POST', body: JSON.stringify({ step: 'create', text: text.trim(), audioPath }) });
       setText(''); setAudio(null);
-      onMsg({ t: 'Notifikasi terkirim. Pengguna akan melihatnya dalam beberapa detik.' });
+      onMsg({ t: 'Notifikasi terkirim ke panel notifikasi HP pengguna yang sudah mengaktifkannya, dan tampil di dalam aplikasi untuk yang sedang membuka.' });
       await load();
     } catch (e) { onMsg({ err: true, t: e.message }); }
     setBusy('');
