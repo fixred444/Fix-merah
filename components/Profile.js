@@ -11,7 +11,7 @@ export default function Profile({ head, id, onProfile, onDm }) {
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
   const [edit, setEdit] = useState(false);
-  const [form, setForm] = useState({ name: '', bio: '' });
+  const [form, setForm] = useState({ name: '', bio: '', hideSeen: false });
   const [list, setList] = useState(null); // { kind, items }
   const [note, setNote] = useState('');
 
@@ -77,10 +77,11 @@ export default function Profile({ head, id, onProfile, onDm }) {
 
       {p.isMe && (
         <>
-          {!edit ? <button type="button" className="chip" onClick={() => { setForm({ name: p.name, bio: p.bio }); setEdit(true); }}>Ubah profil</button> : (
+          {!edit ? <button type="button" className="chip" onClick={() => { setForm({ name: p.name, bio: p.bio, hideSeen: !!p.hideSeen }); setEdit(true); }}>Ubah profil</button> : (
             <form onSubmit={(e) => { e.preventDefault(); run(async () => { await api('/api/profile', { method: 'PUT', body: JSON.stringify(form) }); setEdit(false); }, 'Profil disimpan.'); }}>
               <label>Nama<input required minLength={2} maxLength={30} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
               <label>Bio<textarea rows={3} maxLength={160} value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} placeholder="Ceritakan sedikit tentang dirimu" /></label>
+              <label className="inline"><input type="checkbox" checked={form.hideSeen} onChange={(e) => setForm({ ...form, hideSeen: e.target.checked })} /> Sembunyikan &ldquo;terakhir dilihat&rdquo;</label>
               <button className="btn small" disabled={busy}>Simpan</button>
               <button type="button" className="chip" onClick={() => setEdit(false)}>Batal</button>
             </form>
