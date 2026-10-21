@@ -54,6 +54,7 @@ async function handleGET(req) {
     profile: {
       ...card(p, fs), isMe: mine, followers: followers || 0, following: following || 0,
       ...((mine || u.isAdmin) ? { verifyStatus: p.verify_status, verifyNote: p.verify_note || '' } : {}),
+      ...(mine ? { hideSeen: !!p.hide_seen } : {}),
     },
   });
 }
@@ -66,7 +67,9 @@ async function handlePUT(req) {
   const bio = String(b.bio || '').trim().slice(0, 160);
   if (name.length < 2 || name.length > 30) return json({ error: 'Nama 2 sampai 30 huruf.' }, 400);
   await ensureProfile(u.id, u.email, u.isAdmin);
-  const { error } = await db().from('profiles').update({ name, bio }).eq('user_id', u.id);
+  const upd = { name, bio };
+  if (typeof b.hideSeen === 'boolean') upd.hide_seen = b.hideSeen;
+  const { error } = await db().from('profiles').update(upd).eq('user_id', u.id);
   if (error) return json({ error: `Gagal menyimpan. ${SQL_HINT}` }, 500);
   return json({ ok: true });
 }
