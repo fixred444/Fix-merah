@@ -1,15 +1,35 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { useCallback, useEffect, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { supabase, api } from '@/lib/client';
-import ThemeToggle from './ThemeToggle';
+import Avatar from './Avatar';
+import Drawer from './Drawer';
 import Announcer from './Announcer';
 import PushPrompt from './PushPrompt';
 
 export default function Shell({ children, adminOnly = false, active }) {
   const r = useRouter();
+  const pathname = usePathname();
   const [me, setMe] = useState(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [unread, setUnread] = useState(0);
+
+  // Lencana pesan pribadi belum dibaca (di ikon surat dan di panel menu).
+  useEffect(() => {
+    if (!me || me.status === 'nonaktif') return undefined;
+    const tick = async () => { if (document.hidden) return; try { const x = await api('/api/dm?unread=1'); setUnread(x.unread || 0); } catch {} };
+    tick(); const t = setInterval(tick, 15000);
+    return () => clearInterval(t);
+  }, [me]);
+
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
+  // Pindah ke bagian tertentu di halaman menu (dari panel menu / ikon atas).
+  const go = (v) => {
+    setMenuOpen(false);
+    if (pathname === '/menu') window.dispatchEvent(new CustomEvent('fm-nav', { detail: { view: v } }));
+    else r.push(v === 'home' ? '/menu' : `/menu?v=${v}`);
+  };
+  const logout = async () => { await supabase.auth.signOut(); r.replace('/masuk'); };
 
   useEffect(() => {
     (async () => {
@@ -38,17 +58,19 @@ export default function Shell({ children, adminOnly = false, active }) {
   return (
     <div className="wrap">
       <Announcer />
-      <header className="top card">
-        <div className="brand"><span className="logo">FM</span><span className="brandname">Fix Merah</span></div>
-        <nav>
-          <Link href="/menu" className={active === 'menu' ? 'nav on' : 'nav'}>Menu utama</Link>
-          {me.isAdmin && <Link href="/admin" className={active === 'admin' ? 'nav on' : 'nav'}>Admin</Link>}
-        </nav>
-        <div className="right-tools">
-          <ThemeToggle />
-          <button className="chip" onClick={async () => { await supabase.auth.signOut(); r.replace('/masuk'); }}>Keluar</button>
-        </div>
+      <header className="appbar card">
+        <button type="button" className="iconbtn" onClick={() => setMenuOpen(true)} aria-label="Buka menu" aria-haspopup="dialog" aria-expanded={menuOpen}>
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" fill="none" /></svg>
+        </button>
+        <button type="button" className="brand brandbtn" onClick={() => go('home')} aria-label="Ke beranda"><span className="logo">FM</span><span className="brandname">Fix Merah</span></button>
+        <span className="grow" />
+        <button type="button" className="iconbtn" onClick={() => go('dm')} aria-label={unread > 0 ? `Pesan pribadi, ${unread} belum dibaca` : 'Pesan pribadi'}>
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M3.5 6.5h17v11h-17z M3.5 7l8.5 6.5L20.5 7" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" fill="none" /></svg>
+          {unread > 0 && <span className="dot">{unread > 99 ? '99+' : unread}</span>}
+        </button>
+        <button type="button" className="iconbtn avatarbtn" onClick={() => go('profil')} aria-label="Profil saya"><Avatar name={me.name || me.email} size={32} /></button>
       </header>
+      <Drawer open={menuOpen} me={me} unread={unread} onClose={closeMenu} onGo={go} onAdmin={() => { setMenuOpen(false); r.push('/admin'); }} onLogout={logout} />
       <div className="content">
         {me.status === 'beku' && <p className="note err" role="status">Akunmu sedang dibekukan admin{me.note ? `: ${me.note}` : '.'} Kamu masih bisa melihat data, tapi belum bisa mengirim.</p>}
         <PushPrompt />

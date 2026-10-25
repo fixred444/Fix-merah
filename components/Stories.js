@@ -248,7 +248,10 @@ export default function Stories() {
   const circle = { width: 62, height: 62, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 22, color: '#fff', background: '#555', flex: '0 0 auto' };
   return (
     <section className="card fade" aria-label="Story">
-      <b>Story</b>
+      <div className="sthead">
+        <b>{'\u{1F525}'} STORY</b>
+        <button type="button" className="chip" onClick={() => groups.length && setViewer(0)} disabled={!groups.length}>Lihat Semua</button>
+      </div>
       {err && <p className="note err" role="alert">{err}</p>}
       <div style={{ display: 'flex', gap: 14, overflowX: 'auto', padding: '10px 2px 4px' }}>
         <button type="button" onClick={() => setComposer(true)} aria-label="Tambah story" style={{ background: 'none', border: 0, padding: 0, color: 'inherit', textAlign: 'center', cursor: 'pointer', flex: '0 0 auto' }}>
