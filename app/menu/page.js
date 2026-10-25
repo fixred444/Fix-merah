@@ -8,6 +8,9 @@ import GlobalChat from '@/components/GlobalChat';
 import People from '@/components/People';
 import Profile from '@/components/Profile';
 import DirectMessages from '@/components/DirectMessages';
+import Avatar from '@/components/Avatar';
+import WeatherCard from '@/components/WeatherCard';
+import Verified from '@/components/Verified';
 
 const SECTIONS = {
   kirim: { icon: '\u{1F4E8}', title: 'Kirim permohonan', hint: 'Ketik nomor, pilih teks, lalu kirim' },
@@ -20,7 +23,7 @@ const SECTIONS = {
   profil: { icon: '\u{1F464}', title: 'Profil', hint: 'Lihat dan ubah profilmu' },
 };
 
-function Dashboard() {
+function Dashboard({ me }) {
   const [view, setView] = useState(null);
   const [target, setTarget] = useState(null); // id pengguna untuk profil / DM
   const [dmUnread, setDmUnread] = useState(0);
@@ -125,8 +128,18 @@ function Dashboard() {
   useEffect(() => {
     try {
       const sp = new URLSearchParams(window.location.search); const id = sp.get('dm');
+      const v = sp.get('v');
       if (id && /^[0-9a-f-]{36}$/i.test(id)) { openDm(id); window.history.replaceState(null, '', '/menu'); }
+      else if (v && SECTIONS[v]) { open(v); window.history.replaceState(null, '', '/menu'); }
     } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Perintah pindah bagian dari panel menu (garis tiga) di Shell.
+  useEffect(() => {
+    const h = (e) => { const v = e.detail && e.detail.view; if (v === 'home') open(null); else if (SECTIONS[v]) open(v); };
+    window.addEventListener('fm-nav', h);
+    return () => window.removeEventListener('fm-nav', h);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -141,7 +154,6 @@ function Dashboard() {
   const clock = `${Math.floor(wait / 60)}:${String(wait % 60).padStart(2, '0')}`;
   const ready = (senderMode === 'global' || sel.accountId) && phone.trim() && sel.templateId && sel.targetId && wait === 0;
   const pct = Math.min(100, Math.round((hist.today / Math.max(1, hist.limit)) * 100));
-  const counts = { akun: accounts.length, riwayat: hist.items.length, ...(dmUnread > 0 ? { dm: dmUnread } : {}) };
 
   const closeReply = () => { setReplied(null); try { localStorage.removeItem('fm_reply'); } catch {} };
   const banner = replied && (
@@ -194,23 +206,31 @@ function Dashboard() {
   );
 
   if (!view) {
+    const role = me.isAdmin ? 'ADMIN' : me.status === 'beku' ? 'DIBEKUKAN' : 'PENGGUNA';
+    const today = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     return (
       <>
         {note}
-        <Stories />
-        <section className="card stat fade">
-          <div><span className="muted">Kuota hari ini</span><b className="big">{hist.today}</b><span className="muted">dari {hist.limit} pengiriman</span></div>
-          <div className="meter" role="progressbar" aria-valuemin={0} aria-valuemax={hist.limit} aria-valuenow={hist.today}><i style={{ width: `${pct}%` }} /></div>
+        <WeatherCard />
+        <section className="card welcome fade">
+          <div className="wtop">
+            <span className="wav"><Avatar name={me.name || me.email} size={64} /><i className="online" aria-label="Online" /></span>
+            <div className="wtext">
+              <small className="wkicker">SELAMAT DATANG KEMBALI</small>
+              <b className="wname"><span>{me.name || me.email}</span>{me.verified && <Verified size={20} />}</b>
+              <span className="wmeta"><span className="rolechip">{role}</span><small className="muted">{today}</small></span>
+            </div>
+          </div>
+          <div className="meter" role="progressbar" aria-label="Kuota hari ini" aria-valuemin={0} aria-valuemax={hist.limit} aria-valuenow={hist.today}><i style={{ width: `${pct}%` }} /></div>
+          <small className="muted">Kuota hari ini: {hist.today} dari {hist.limit} pengiriman terpakai</small>
         </section>
-        <div className="hub fade">
-          {Object.entries(SECTIONS).map(([id, s]) => (
-            <button key={id} type="button" className={id === 'kirim' ? 'card tile wide' : 'card tile'} onClick={() => open(id)}>
-              <span className="ticon" aria-hidden="true">{s.icon}</span>
-              <span className="ttext"><b>{s.title}</b><small className="muted">{s.hint}</small></span>
-              {typeof counts[id] === 'number' && <span className="badge">{counts[id]}</span>}
-            </button>
-          ))}
+        <div className="statrow fade">
+          <button type="button" className="statbtn g" onClick={() => open('riwayat')}><span aria-hidden="true">{'\u{1F4CA}'}</span><b>{hist.today}/{hist.limit}</b><small>KUOTA</small></button>
+          <button type="button" className="statbtn b" onClick={() => open('dm')}><span aria-hidden="true">{'\u2709\uFE0F'}</span><b>{dmUnread}</b><small>PESAN BARU</small></button>
+          <button type="button" className="statbtn r" onClick={() => open('akun')}><span aria-hidden="true">{'\u{1F511}'}</span><b>{accounts.length}</b><small>AKUN GMAIL</small></button>
         </div>
+        <button type="button" className="btn bigcta fade" onClick={() => open('kirim')}>{'\u{1F4E8}'} Kirim permohonan</button>
+        <Stories />
       </>
     );
   }
@@ -361,5 +381,5 @@ function Dashboard() {
 }
 
 export default function Menu() {
-  return <Shell active="menu">{() => <Dashboard />}</Shell>;
+  return <Shell active="menu">{(me) => <Dashboard me={me} />}</Shell>;
 }
