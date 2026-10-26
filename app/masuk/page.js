@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/client';
+import Recaptcha, { captchaOn, captchaV3, tokenV3 } from '@/components/Recaptcha';
 import ThemeToggle from '@/components/ThemeToggle';
 
 export default function Masuk() {
@@ -12,6 +13,8 @@ export default function Masuk() {
   const [show, setShow] = useState(false);
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [token, setToken] = useState('');
+  const [resetKey, setResetKey] = useState(0);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => data.session && r.replace('/menu'));
@@ -21,13 +24,21 @@ export default function Masuk() {
     e.preventDefault();
     setMsg(null);
     if (pass.length < 8) return setMsg({ err: true, t: 'Kata sandi minimal 8 karakter.' });
+    if (captchaOn && !captchaV3 && !token) return setMsg({ err: true, t: 'Centang \u201CSaya bukan robot\u201D dulu.' });
     setBusy(true);
-    const fn = mode === 'masuk' ? supabase.auth.signInWithPassword : supabase.auth.signUp;
-    const { data, error } = await fn.call(supabase.auth, { email, password: pass });
+    try {
+      const t = captchaOn ? (captchaV3 ? await tokenV3(mode === 'masuk' ? 'masuk' : 'daftar') : token) : '';
+      const res = await fetch('/api/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: mode === 'masuk' ? 'masuk' : 'daftar', email, password: pass, token: t }) });
+      const out = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(out.error || 'Terjadi kesalahan');
+      const { error } = await supabase.auth.setSession({ access_token: out.access_token, refresh_token: out.refresh_token });
+      if (error) throw error;
+      r.replace('/menu');
+    } catch (err) {
+      setMsg({ err: true, t: err.message || 'Terjadi kesalahan' });
+      setResetKey((k) => k + 1);
+    }
     setBusy(false);
-    if (error) return setMsg({ err: true, t: error.message === 'Invalid login credentials' ? 'Email atau kata sandi salah.' : error.message });
-    if (data.session) r.replace('/menu');
-    else setMsg({ t: 'Akun dibuat. Cek email untuk konfirmasi, lalu masuk.' });
   }
 
   async function lupa() {
@@ -61,6 +72,7 @@ export default function Masuk() {
             </span>
           </label>
           {mode === 'masuk' && <button type="button" className="link right" onClick={lupa}>Lupa kata sandi?</button>}
+          <Recaptcha onToken={setToken} resetKey={resetKey} />
           {msg && <p className={msg.err ? 'note err' : 'note ok'} role="status">{msg.t}</p>}
           <button className="btn" disabled={busy}>{busy ? 'Memproses…' : mode === 'masuk' ? 'Masuk' : 'Daftar'}</button>
         </form>
