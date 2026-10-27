@@ -169,6 +169,7 @@ function Thread({ head, peerId, onBack, onProfile }) {
             </span>
           </button>
         )}
+        {peer && <button type="button" className="chip callbtn" onClick={() => window.dispatchEvent(new CustomEvent('fm-call', { detail: { id: peerId, name: peer.name, verified: peer.verified } }))} aria-label={`Telepon ${peer.name}`}>{'\u{1F4DE}'}</button>}
       </div>
       <div ref={boxRef} onScroll={onScroll} className="dmbox" role="log" aria-live="polite" aria-label="Pesan pribadi">
         {msgs.length === 0 && <p className="muted" style={{ textAlign: 'center', margin: 'auto' }}>Belum ada pesan. Mulai percakapan.</p>}

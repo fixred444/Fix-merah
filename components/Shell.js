@@ -6,6 +6,7 @@ import Avatar from './Avatar';
 import Drawer from './Drawer';
 import Announcer from './Announcer';
 import PushPrompt from './PushPrompt';
+import CallManager from './CallManager';
 
 export default function Shell({ children, adminOnly = false, active }) {
   const r = useRouter();
@@ -58,6 +59,7 @@ export default function Shell({ children, adminOnly = false, active }) {
   return (
     <div className="wrap">
       <Announcer />
+      <CallManager />
       <header className="appbar card">
         <button type="button" className="iconbtn" onClick={() => setMenuOpen(true)} aria-label="Buka menu" aria-haspopup="dialog" aria-expanded={menuOpen}>
           <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" fill="none" /></svg>
