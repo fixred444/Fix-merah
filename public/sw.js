@@ -13,8 +13,8 @@ self.addEventListener('push', (event) => {
       badge: '/badge.png',
       tag: d.tag || 'fm-announcement',
       renotify: true,
-      requireInteraction: false,
-      vibrate: [120, 60, 120],
+      requireInteraction: !!d.ring,
+      vibrate: d.ring ? [400, 200, 400, 200, 400, 200, 400] : [120, 60, 120],
       timestamp: d.ts || Date.now(),
       data: { url: d.url || '/menu' },
     })
